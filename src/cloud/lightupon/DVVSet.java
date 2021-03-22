@@ -86,7 +86,7 @@ public class DVVSet {
      * It discards (causally) outdated values, while merging all causal histories.
      */
     public List sync(Clock clock) {
-ith        return foldl(clock.asList());
+        return foldl(clock.asList());
     }
 
     private List sync(Clock clock1, Clock clock2) {
@@ -361,11 +361,11 @@ ith        return foldl(clock.asList());
     /*
      * Returns all the ids used in this clock set.
      * */
-    public List ids(Clock clock) {
+    public List ids(List clock) {
         List result = new ArrayList<>();
-        List entries = clock.getEntries();
+        List entries = (List) clock.get(0);
         for (int i = 0; i != entries.size(); i++) {
-            Object value = ((List) entries.get(i)).get(2);
+            Object value = ((List) entries.get(i)).get(0);
             result.add(value);
         }
         return result;
@@ -375,9 +375,9 @@ ith        return foldl(clock.asList());
      * Returns all the values used in this clock set,
      * including the anonymous values.
      */
-    public List values(Clock clock) {
+    public List values(List clock) {
         List lst = new ArrayList();
-        List entries = clock.getEntries();
+        List entries = (List) clock.get(0);
         for (int i = 0; i != entries.size(); i++) {
             List entry = (List) entries.get(i);
             List value = (List) entry.get(2);
@@ -386,13 +386,12 @@ ith        return foldl(clock.asList());
         List flatList = new ArrayList();
         for (int i = 0; i != lst.size(); i++) {
             List subList = (List) lst.get(i);
-            for (int j = 0; j != subList.size(); i++) {
+            for (int j = 0; j != subList.size(); j++) {
                 flatList.add(subList.get(j));
             }
         }
-        List result = new ArrayList();
-        result.add(clock.getValue());
-        result.add(flatList);
+        List result = (List) clock.get(1);
+        result.addAll(flatList);
         return result;
     }
 
@@ -400,18 +399,23 @@ ith        return foldl(clock.asList());
      * Compares the equality of both clocks, regarding
      * only the causal histories, thus ignoring the values.
      */
+    public boolean equal(Clock clock1, Clock clock2) {
+        return equal(clock1.getEntries(), clock2.getEntries());
+    }
+
     public boolean equal(List vector1, List vector2) {
-        if (vector1.size() == 0 && vector2.size() == 0) return true;
-        if (vector1.size() > 0 && ((List) vector1.get(0)).size() > 0 && vector2.size() > 0 && ((List) vector2.get(0)).size() > 0) {
-            if (((List) vector1.get(0)).get(0) == ((List) vector2.get(0)).get(0)) {
-                if (((List) vector1.get(0)).size() > 1 && ((List) vector2.get(0)).size() > 1 && ((List) vector1.get(0)).get(1) == ((List) vector2.get(0)).get(1)) {
-                    if (((List) vector1.get(0)).get(2) == ((List) vector2.get(0)).get(2)) {
-                        return equal(vector1.subList(1, vector1.size()), vector2.subList(1, vector2.size()));
-                    }
+        if (vector1.isEmpty() && vector2.isEmpty()) return true;
+        List value1 = (List) vector1.get(0);
+        List value2 = (List) vector2.get(0);
+        if (!value1.isEmpty() && !value2.isEmpty()) {
+            if (value1.get(0) == value2.get(0)) {
+                int size1 = ((List) value1.get(2)).size();
+                int size2 = ((List) value2.get(2)).size();
+                if (size1 == size2) {
+                    return equal(vector1.subList(1, vector1.size()), vector1.subList(1, vector1.size()));
                 }
             }
         }
         return false;
     }
 }
-
