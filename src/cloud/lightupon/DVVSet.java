@@ -6,7 +6,6 @@
 package cloud.lightupon;
 
 import java.util.*;
-import java.util.stream.Stream;
 
 public class DVVSet {
 
@@ -41,7 +40,7 @@ public class DVVSet {
      */
     public Clock newWithHistory(List<List> vector, Object value) {
         // defense against non-order preserving serialization
-        Collections.sort(vector, new DvvComparator());
+        Collections.sort(vector, new DVVComparator());
         List entries = new ArrayList();
         for (int i = 0; i != vector.size(); i++) {
             List entry = new ArrayList();
@@ -71,13 +70,12 @@ public class DVVSet {
         return newWithHistory(vector, value);
     }
 
-    private List foldl(final List lst) {
+    private List foldl(final List<List> lst) {
         if (lst.isEmpty()) {
             return lst;
         }
         Collections.reverse(lst);
-        List accumulator = new ArrayList();
-        List result = Stream.of(lst).reduce(accumulator, (x, y) -> sync(x, y));
+        List result = lst.stream().reduce(new ArrayList(), (x, y) -> _sync(x, y));
         return result;
     }
 
@@ -89,17 +87,17 @@ public class DVVSet {
         return foldl(clock.asList());
     }
 
-    private List sync(Clock clock1, Clock clock2) {
+    private List _sync(List clock1, List clock2) {
         if (clock1.isEmpty()) {
-            return clock2.asList();
+            return clock2;
         }
         if (clock2.isEmpty()) {
-            return clock1.asList();
+            return clock1;
         }
-        List clock1Entries = clock1.getEntries();
-        Object clock1Value = clock1.getValue();
-        List clock2Entries = clock2.getEntries();
-        Object clock2Value = clock2.getValue();
+        List clock1Entries = (List) clock1.get(0);
+        Object clock1Value = clock1.get(1);
+        List clock2Entries = (List) clock2.get(0);
+        Object clock2Value = clock2.get(1);
 
         Object value;
         if (less(clock1, clock2)) {
@@ -126,13 +124,13 @@ public class DVVSet {
             }
         }
         List result = new ArrayList();
-        List syncedClocks = sync(clock1Entries, clock2Entries);
+        List syncedClocks = _sync2(clock1Entries, clock2Entries);
         result.add(syncedClocks);
         result.add(value);
         return result;
     }
 
-    private List sync(List<List> entries1, List<List> entries2) {
+    private List _sync2(List<List> entries1, List<List> entries2) {
         if (entries1.isEmpty()) return entries2;
         if (entries2.isEmpty()) return entries1;
 
@@ -142,57 +140,64 @@ public class DVVSet {
         List head2 = new ArrayList();
         head2.addAll(entries2.get(0));
 
-        DvvComparator comparator = new DvvComparator();
+        DVVComparator comparator = new DVVComparator();
         if (comparator.compare(head2.get(0), head1.get(0)) > 0) {
             List result = new ArrayList();
             result.add(head1);
-            List toAppend = sync(entries1.subList(1, entries1.size()), entries2);
-            result.add(toAppend);
+            List toAppend = _sync(entries1.subList(1, entries1.size()), entries2);
+            result.addAll(toAppend);
             return result;
         }
         if (comparator.compare(head1.get(0), head2.get(0)) > 0) {
             List result = new ArrayList();
             result.add(head2);
-            List toAppend = sync(entries2.subList(1, entries2.size()), entries1);
-            result.add(toAppend);
+            List toAppend = _sync(entries2.subList(1, entries2.size()), entries1);
+            result.addAll(toAppend);
             return result;
         }
 
-        String theId = (String) head1.get(0);
+        Object theId = head1.get(0);
         int counter1 = (int) head1.get(1);
         List values1 = (List) head1.get(2);
         int counter2 = (int) head2.get(1);
         List values2 = (List) head2.get(2);
+        List result = new ArrayList();
+        List mergeResult = _merge(theId, counter1, values1, counter2, values2);
+        result.add(mergeResult);
+        List syncResult = _sync2(entries1.subList(1, entries1.size()), entries2.subList(1, entries2.size()));
+        result.addAll(syncResult);
+        return result;
+    }
 
+    /*
+     * Returns [id(), counter(), values()]
+     */
+    private List _merge(Object theId, int counter1, List values1, int counter2, List values2) {
         int len1 = values1.size();
         int len2 = values2.size();
-        List mergeResult = new ArrayList();
-        mergeResult.add(theId);
+        List result = new ArrayList();
+        result.add(theId);
         if (counter1 >= counter2) {
             if (counter1 - len1 >= counter2 - len2) {
-                mergeResult.add(counter1);
-                mergeResult.add(values1);
-            } else {
-                mergeResult.add(counter1);
-                int idx = counter1 - counter2 + len2;
-                List slice = values1.subList(0, idx);
-                mergeResult.add(slice);
+                result.add(counter1);
+                result.add(values1);
+                return result;
             }
-        } else {
-            if (counter2 - len2 >= counter1 - len1) {
-                mergeResult.add(counter2);
-                mergeResult.add(values2);
-            } else {
-                mergeResult.add(counter2);
-                int idx = counter2 - counter1 + len1;
-                List slice = values2.subList(0, idx);
-                mergeResult.add(slice);
-            }
+            result.add(counter1);
+            int idx = counter1 - counter2 + len2;
+            List slice = values1.subList(0, idx);
+            result.add(slice);
+            return result;
         }
-        List result = new ArrayList();
-        result.add(mergeResult);
-        List syncResult = sync(entries1.subList(1, entries1.size()), entries2.subList(1, entries2.size()));
-        result.addAll(syncResult);
+        if (counter2 - len2 >= counter1 - len1) {
+            result.add(counter2);
+            result.add(values2);
+            return result;
+        }
+        result.add(counter2);
+        int idx = counter2 - counter1 + len1;
+        List slice = values2.subList(0, idx);
+        result.add(slice);
         return result;
     }
 
@@ -200,19 +205,19 @@ public class DVVSet {
      * the second clock, thus values on the first clock are outdated.
      * Returns False otherwise.
      */
-    public boolean less(Clock clock1, Clock clock2) {
-        return greater(clock2.getEntries(), clock1.getEntries(), false);
+    public boolean less(List clock1, List clock2) {
+        return greater((List) clock2.get(0), (List) clock1.get(0), false);
     }
 
-    private boolean greater(List<List> vector1, List<List> vector2, boolean isStrict) {
+    private boolean greater(List vector1, List vector2, boolean isStrict) {
         if (vector1.isEmpty() && vector2.isEmpty()) {
             return isStrict;
         }
         if (vector2.isEmpty()) return true;
         if (vector1.isEmpty()) return false;
-        if (vector1.get(0).get(0) == vector2.get(0).get(0)) {
-            int dotNum1 = (int) vector1.get(0).get(1);
-            int dotNum2 = (int) vector2.get(0).get(1);
+        if (isSizeEqual(((List) vector1.get(0)).get(0), ((List) vector2.get(0)).get(0)) == 0) {
+            int dotNum1 = (int) ((List) vector1.get(0)).get(1);
+            int dotNum2 = (int) ((List) vector2.get(0)).get(1);
             if (dotNum1 == dotNum2) {
                 return greater(vector1.subList(1, vector1.size()), vector2.subList(1, vector2.size()), isStrict);
             }
@@ -221,8 +226,8 @@ public class DVVSet {
             }
             if (dotNum1 < dotNum2) return false;
         }
-        DvvComparator comparator = new DvvComparator();
-        if (comparator.compare(vector2.get(0).get(0), vector1.get(0).get(0)) > 0) {
+        DVVComparator comparator = new DVVComparator();
+        if (comparator.compare(((List) vector2.get(0)).get(0), ((List) vector1.get(0)).get(0)) > 0) {
             return greater(vector1.subList(1, vector1.size()), vector2, true);
         }
         return false;
@@ -248,7 +253,7 @@ public class DVVSet {
      * The new value is the *anonymous dot* of the clock.
      * The client clock SHOULD BE a direct result of new.
      */
-    public Clock create(Clock clock, String theId) {
+    public Clock create(Clock clock, Object theId) {
         Object value = clock.getValue();
         List event;
         if (value instanceof List && ((List) value).size() > 0) {
@@ -270,9 +275,12 @@ public class DVVSet {
      * the new value in the *anonymous dot* while
      * the second clock is from the local server.
      */
-    public Clock update(Clock clock1, Clock clock2, String theId) {
+    public Clock update(Clock clock1, Clock clock2, Object theId) {
         // Sync both clocks without the new value
-        List syncedClock = sync(new Clock(clock1.getEntries(), new ArrayList()), clock2);
+        List c1 = new ArrayList();
+        c1.add(clock1.getEntries());
+        c1.add(new ArrayList());
+        List syncedClock = _sync(c1, clock2.asList());
         // We create a new event on the synced causal history,
         // with the id I and the new value.
         // The anonymous values that were synced still remain.
@@ -284,7 +292,23 @@ public class DVVSet {
         return new Clock(event, (List) syncedClock.get(1));
     }
 
-    public List event(List vector, String theId, Object value) {
+    private int isSizeEqual(Object a, Object b) {
+        Integer sizeA = null;
+        Integer sizeB = null;
+        if (a instanceof List && b instanceof List) {
+            sizeA = ((List) a).size();
+            sizeB = ((List) b).size();
+        } else if (a instanceof String && b instanceof String) {
+            sizeA = ((String) a).length();
+            sizeB = ((String) b).length();
+        }
+        if (sizeA != null && sizeA > sizeB) return 1;
+        if (sizeA != null && sizeA < sizeB) return -1;
+        if (sizeA != null && sizeA == sizeB) return 0;
+        return -1;
+    }
+
+    public List event(List vector, Object theId, Object value) {
         if (vector.isEmpty()) {
             List result = new ArrayList();
             List event = new ArrayList();
@@ -297,8 +321,8 @@ public class DVVSet {
             return result;
         }
         if (vector.size() > 0 && ((List) vector.get(0)).size() > 0) {
-            String vectorId = (String) ((List) vector.get(0)).get(0);
-            if (theId.equals(vectorId)) {
+            Object vectorId = ((List) vector.get(0)).get(0);
+            if (isSizeEqual(theId, vectorId) == 0) {
                 List values = new ArrayList();
                 if (value instanceof List) {
                     values.addAll((List) value);
@@ -319,8 +343,8 @@ public class DVVSet {
         }
         if (vector.size() > 0 && ((List) vector.get(0)).size() > 0) {
             Object nestedElement = ((List) vector.get(0)).get(0);
-            String vectorId = (String) ((List) vector.get(0)).get(0);
-            if (nestedElement instanceof List || vectorId.length() > theId.length()) {
+            Object vectorId = ((List) vector.get(0)).get(0);
+            if (nestedElement instanceof List || isSizeEqual(vectorId, theId) > 0) {
                 List result = new ArrayList();
                 List bit = new ArrayList();
                 bit.add(theId);

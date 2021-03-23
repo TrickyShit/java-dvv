@@ -79,15 +79,13 @@ public class DvvSetTest extends TestCase {
     }
 
     public void testSync() {
-        List X = new ArrayList(); // [[["x",1,[]]],[]]
         List nested00 = new ArrayList();
         List nested01 = new ArrayList();
         nested01.add("x");
         nested01.add(1);
         nested01.add(new ArrayList());
         nested00.add(nested01);
-        X.add(nested00);
-        X.add(new ArrayList());
+        Clock X = new Clock(nested00, new ArrayList()); // [[["x",1,[]]],[]]
 
         Clock A = this.dvvSet.create(this.dvvSet.newDvv("v1"), "a");
         List v2Lst = new ArrayList();
@@ -106,7 +104,7 @@ public class DvvSetTest extends TestCase {
         nested11.add(1);
         nested11.add(new ArrayList());
         nested10.add(nested11);
-        W.add(nested11);
+        W.add(nested10);
         W.add(new ArrayList());
 
         List Z = new ArrayList(); // [[["a",2,["v2","v1"]]],[]]
@@ -119,31 +117,28 @@ public class DvvSetTest extends TestCase {
         nested22.add("v1");
         nested21.add(nested22);
         nested20.add(nested21);
-        Z.add(nested21);
+        Z.add(nested20);
         Z.add(new ArrayList());
 
-        Clock clock2sync0 = new Clock(W, Z);
-        Clock clock2sync1 = new Clock(Z, W);
-        List syncResult0 = this.dvvSet.sync(clock2sync0);
-        List syncResult1 = this.dvvSet.sync(clock2sync1);
-        assertEquals(syncResult0, syncResult1);
+        Clock clockWZ = new Clock(W, Z);
+        Clock clockZW = new Clock(Z, W);
+        List syncResultWZ = this.dvvSet.sync(clockWZ);
+        List syncResultZW = this.dvvSet.sync(clockZW);
+        assertEquals(syncResultWZ, syncResultZW);
 
         // test list of clocks synchronization
-        List clock2sync2 = new ArrayList();
-        clock2sync2.add(A);
-        clock2sync2.add(A1);
-        List clock2sync3 = new ArrayList();
-        clock2sync3.add(A1);
-        clock2sync3.add(A);
-        assertEquals(clock2sync2, clock2sync3);
 
-        List clock2sync4 = new ArrayList();
-        clock2sync4.add(A4);
-        clock2sync4.add(A3);
-        List clock2sync5 = new ArrayList();
-        clock2sync5.add(A3);
-        clock2sync5.add(A4);
-        assertEquals(clock2sync4, clock2sync5);
+        Clock clockAA1 = new Clock(A.asList(), A1.asList());
+        Clock clockA1A = new Clock(A1.asList(), A.asList());
+        List syncResultAA1 = this.dvvSet.sync(clockAA1);
+        List syncResultA1A = this.dvvSet.sync(clockA1A);
+        assertEquals(syncResultAA1, syncResultA1A);
+
+        Clock clockA4A3 = new Clock(A4.asList(), A3.asList());
+        Clock clockA3A4 = new Clock(A3.asList(), A4.asList());
+        List syncResultA4A3 = this.dvvSet.sync(clockA4A3);
+        List syncResultA3A4 = this.dvvSet.sync(clockA3A4);
+        assertEquals(syncResultA4A3, syncResultA3A4);
 
         List expectedValue0 = new ArrayList(); // [[["a",2,[]], ["b",1,["v3"]], ["c",1,["v3"]]],[]]
         List nested31 = new ArrayList();
@@ -167,11 +162,8 @@ public class DvvSetTest extends TestCase {
         nested30.add(nested33);
         expectedValue0.add(nested30);
         expectedValue0.add(new ArrayList());
-        assertEquals(clock2sync4, expectedValue0);
 
-        List clock2sync6 = new ArrayList();
-        clock2sync6.add(X);
-        clock2sync6.add(A);
+        assertEquals(syncResultA4A3, expectedValue0);
 
         List expectedValue1 = new ArrayList(); // [[["a",1,["v1"]],["x",1,[]]],[]]
         List nested40 = new ArrayList();
@@ -192,16 +184,14 @@ public class DvvSetTest extends TestCase {
 
         expectedValue1.add(nested40);
         expectedValue1.add(new ArrayList());
-        assertEquals(clock2sync6, expectedValue1);
 
-        List clock2sync7 = new ArrayList();
-        clock2sync7.add(X);
-        clock2sync7.add(A);
+        Clock clockXA = new Clock(X.asList(), A.asList());
+        List syncResultXA = this.dvvSet.sync(clockXA);
+        assertEquals(syncResultXA, expectedValue1);
 
-        List clock2sync8 = new ArrayList();
-        clock2sync8.add(A);
-        clock2sync8.add(X);
-        assertEquals(clock2sync7, clock2sync8);
+        Clock clockAX = new Clock(A.asList(), X.asList());
+        List syncResultAX = this.dvvSet.sync(clockAX);
+        assertEquals(syncResultXA, syncResultAX);
 
         List expectedValue2 = new ArrayList(); // [[["a",1,["v1"]],["b",1,["v2"]]],[]]
         List nested50 = new ArrayList();
@@ -225,29 +215,151 @@ public class DvvSetTest extends TestCase {
         expectedValue2.add(nested50);
         expectedValue2.add(new ArrayList());
 
-        List clock2sync9 = new ArrayList();
-        clock2sync9.add(A);
-        clock2sync9.add(Y);
-        assertEquals(clock2sync9, expectedValue2);
+        Clock clockAY = new Clock(A.asList(), Y.asList());
+        List syncResultAY = this.dvvSet.sync(clockAY);
+        assertEquals(syncResultAY, expectedValue2);
 
-        List clock2sync10 = new ArrayList();
-        clock2sync10.add(Y);
-        clock2sync10.add(A);
-        assertEquals(clock2sync10, clock2sync9);
+        Clock clockYA = new Clock(Y.asList(), A.asList());
+        List syncResultYA = this.dvvSet.sync(clockYA);
+        assertEquals(syncResultAY, syncResultYA);
 
-        assertEquals(clock2sync7, clock2sync8); // the same check, to make sure original values are not modified between calls
+        // the following is the same check, just to make sure original values are not modified between calls
+        List syncResultXACopy = this.dvvSet.sync(clockXA);
+        List syncResultAXCopy = this.dvvSet.sync(clockAX);
+        assertEquals(syncResultXACopy, syncResultAXCopy);
     }
 
     public void testSyncUpdate() {
+        // Mary writes v1 w/o VV
+        List v1Lst = new ArrayList();
+        v1Lst.add("v1");
+        Clock A0 = this.dvvSet.create(this.dvvSet.newList(v1Lst), "a");
+        // Peter reads v1 with version vector (VV)
+        List VV1 = this.dvvSet.join(A0);
+        // Mary writes v2 w/o VV
+        List v2Lst = new ArrayList();
+        v2Lst.add("v2");
+        Clock A1 = this.dvvSet.update(this.dvvSet.newList(v2Lst), A0, "a");
+        // Peter writes v3 with VV from v1
+        List v3Lst = new ArrayList();
+        v3Lst.add("v3");
+        Clock A2 = this.dvvSet.update(this.dvvSet.newListWithHistory(VV1, v3Lst), A1, "a");
 
+        List expectedValue0 = new ArrayList();
+        List nested0 = new ArrayList();
+        nested0.add("a");
+        nested0.add(1);
+        expectedValue0.add(nested0);
+        assertEquals(VV1, expectedValue0);
+
+        List expectedValue1 = new ArrayList();
+        List nested1 = new ArrayList();
+        nested1.add("a");
+        nested1.add(1);
+        nested1.add(v1Lst);
+        List nested2 = new ArrayList();
+        nested2.add(nested1);
+        expectedValue1.add(nested2);
+        expectedValue1.add(new ArrayList());
+        assertEquals(A0.asList(), expectedValue1);
+
+        List expectedValue2 = new ArrayList();
+        List nested3 = new ArrayList();
+        nested3.add("a");
+        nested3.add(2);
+        List v2v1Lst = new ArrayList();
+        v2v1Lst.add("v2");
+        v2v1Lst.add("v1");
+        nested3.add(v2v1Lst);
+        List nested4 = new ArrayList();
+        nested4.add(nested3);
+        expectedValue2.add(nested4);
+        expectedValue2.add(new ArrayList());
+        assertEquals(A1.asList(), expectedValue2);
+
+        // now A2 should only have v2 and v3, since v3 was causally newer than v1
+        List expectedValue3 = new ArrayList();
+        List nested5 = new ArrayList();
+        nested5.add("a");
+        nested5.add(3);
+        List v3v2Lst = new ArrayList();
+        v3v2Lst.add("v3");
+        v3v2Lst.add("v2");
+        nested5.add(v3v2Lst);
+        List nested6 = new ArrayList();
+        nested6.add(nested5);
+        expectedValue3.add(nested6);
+        expectedValue3.add(new ArrayList());
+        assertEquals(A2.asList(), expectedValue3);
     }
 
     public void testEvent() {
+        Clock E = this.dvvSet.create(this.dvvSet.newDvv("v1"), "a");
+        List A = E.getEntries();
 
+        List expectedValue0 = new ArrayList();
+        List nested0 = new ArrayList();
+        nested0.add("a");
+        nested0.add(2);
+        List v2v1Lst = new ArrayList();
+        v2v1Lst.add("v2");
+        v2v1Lst.add("v1");
+        nested0.add(v2v1Lst);
+        expectedValue0.add(nested0);
+
+        List eventA = this.dvvSet.event(A, "a", "v2");
+        assertEquals(eventA, expectedValue0);
+
+        List expectedValue1 = new ArrayList();
+        List nested1 = new ArrayList();
+        nested1.add("a");
+        nested1.add(1);
+        List v1Lst = new ArrayList();
+        v1Lst.add("v1");
+        nested1.add(v1Lst);
+        expectedValue1.add(nested1);
+
+        List nested2 = new ArrayList();
+        nested2.add("b");
+        nested2.add(1);
+        List v2Lst = new ArrayList();
+        v2Lst.add("v2");
+        nested2.add(v2Lst);
+        expectedValue1.add(nested2);
+
+        List eventB = this.dvvSet.event(A, "b", "v2");
+        assertEquals(eventB, expectedValue1);
     }
 
     public void testLess() {
+        List aLst = new ArrayList();
+        aLst.add("a");
+        Clock A = this.dvvSet.create(this.dvvSet.newList("v1"), aLst);
+        List v2Lst = new ArrayList();
+        v2Lst.add("v2");
+        Clock B = this.dvvSet.create(this.dvvSet.newListWithHistory(this.dvvSet.join(A), v2Lst), "a");
+        Clock B2 = this.dvvSet.create(this.dvvSet.newListWithHistory(this.dvvSet.join(A), v2Lst), "b");
+        Clock B3 = this.dvvSet.create(this.dvvSet.newListWithHistory(this.dvvSet.join(A), v2Lst), "z");
+        List v3Lst = new ArrayList();
+        v3Lst.add("v3");
+        Clock C = this.dvvSet.update(this.dvvSet.newListWithHistory(this.dvvSet.join(B), v3Lst), A, "c");
+        List v4Lst = new ArrayList();
+        v4Lst.add("v3");
+        Clock D = this.dvvSet.update(this.dvvSet.newListWithHistory(this.dvvSet.join(C), v4Lst), B2, "d");
 
+        assertTrue(this.dvvSet.less(A.asList(), B.asList()));
+        assertTrue(this.dvvSet.less(A.asList(), C.asList()));
+        assertTrue(this.dvvSet.less(B.asList(), C.asList()));
+        assertTrue(this.dvvSet.less(B.asList(), D.asList()));
+        assertTrue(this.dvvSet.less(B2.asList(), D.asList()));
+        assertTrue(this.dvvSet.less(A.asList(), D.asList()));
+        assertTrue(this.dvvSet.less(B2.asList(), C.asList()));
+        assertTrue(this.dvvSet.less(B.asList(), B2.asList()));
+        assertTrue(this.dvvSet.less(B2.asList(), B.asList()));
+        assertTrue(this.dvvSet.less(A.asList(), A.asList()));
+        assertTrue(this.dvvSet.less(C.asList(), C.asList()));
+        assertTrue(this.dvvSet.less(D.asList(), B2.asList()));
+        assertTrue(this.dvvSet.less(B3.asList(), D.asList()));
     }
 
     public void testEqual() {
