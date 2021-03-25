@@ -20,11 +20,11 @@ public class DVVComparator implements Comparator {
         }
         if (a instanceof Collection && b instanceof Collection) {
             if (((Collection) a).size() > 0 && ((Collection) b).size() > 0) {
-                Object a1 = ((Collection<?>) a).iterator().next();
-                Object b1 = ((Collection<?>) b).iterator().next();
-                if (a1 instanceof Collection && b1 instanceof Collection) {
-                    int s1 = ((Collection) a1).size();
-                    int s2 = ((Collection) b).size();
+                Object va = ((Collection<?>) a).iterator().next();
+                Object vb = ((Collection<?>) b).iterator().next();
+                if (va instanceof Collection && vb instanceof Collection) {
+                    int s1 = ((Collection) va).size();
+                    int s2 = ((Collection) vb).size();
                     if (s1 > s2) {
                         return 1;
                     } else if (s1 == s2) {
@@ -32,14 +32,23 @@ public class DVVComparator implements Comparator {
                     } else {
                         return -1;
                     }
+                } else if (va instanceof String && vb instanceof Collection) {
+                    // string is less than list by Erlang logic
+                    return -1;
+                } else if (va instanceof Collection && vb instanceof String) {
+                    return 1;
+                } else if (va instanceof String && vb instanceof String) {
+                    return ((String) va).compareTo((String) vb);
                 }
             }
         }
-        if (a instanceof Collection && !(b instanceof Collection)) {
-            return 1;
-        }
-        if (b instanceof Collection) {
+        if (a instanceof String && b instanceof Collection) {
+            // string is less than list by Erlang logic
             return -1;
+        } else if (a instanceof Collection && b instanceof String) {
+            return 1;
+        } else if (a instanceof String && b instanceof String) {
+            return ((String) a).compareTo((String) b);
         }
         return (((String) a).compareTo(((String) b)));
     }

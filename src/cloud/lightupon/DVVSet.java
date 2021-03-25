@@ -8,7 +8,6 @@ package cloud.lightupon;
 import java.util.*;
 
 public class DVVSet {
-
     /*
      * Constructs a new clock set without causal history,
      * and receives one value that goes to the anonymous list.
@@ -144,14 +143,14 @@ public class DVVSet {
         if (comparator.compare(head2.get(0), head1.get(0)) > 0) {
             List result = new ArrayList();
             result.add(head1);
-            List toAppend = _sync(entries1.subList(1, entries1.size()), entries2);
+            List toAppend = _sync2(entries1.subList(1, entries1.size()), entries2);
             result.addAll(toAppend);
             return result;
         }
         if (comparator.compare(head1.get(0), head2.get(0)) > 0) {
             List result = new ArrayList();
             result.add(head2);
-            List toAppend = _sync(entries2.subList(1, entries2.size()), entries1);
+            List toAppend = _sync2(entries2.subList(1, entries2.size()), entries1);
             result.addAll(toAppend);
             return result;
         }
@@ -215,7 +214,9 @@ public class DVVSet {
         }
         if (vector2.isEmpty()) return true;
         if (vector1.isEmpty()) return false;
-        if (isSizeEqual(((List) vector1.get(0)).get(0), ((List) vector2.get(0)).get(0)) == 0) {
+        Object value1 = ((List) vector1.get(0)).get(0);
+        Object value2 = ((List) vector2.get(0)).get(0);
+        if (value1.equals(value2)) {
             int dotNum1 = (int) ((List) vector1.get(0)).get(1);
             int dotNum2 = (int) ((List) vector2.get(0)).get(1);
             if (dotNum1 == dotNum2) {
@@ -292,22 +293,6 @@ public class DVVSet {
         return new Clock(event, (List) syncedClock.get(1));
     }
 
-    private int isSizeEqual(Object a, Object b) {
-        Integer sizeA = null;
-        Integer sizeB = null;
-        if (a instanceof List && b instanceof List) {
-            sizeA = ((List) a).size();
-            sizeB = ((List) b).size();
-        } else if (a instanceof String && b instanceof String) {
-            sizeA = ((String) a).length();
-            sizeB = ((String) b).length();
-        }
-        if (sizeA != null && sizeA > sizeB) return 1;
-        if (sizeA != null && sizeA < sizeB) return -1;
-        if (sizeA != null && sizeA == sizeB) return 0;
-        return -1;
-    }
-
     public List event(List vector, Object theId, Object value) {
         if (vector.isEmpty()) {
             List result = new ArrayList();
@@ -320,9 +305,9 @@ public class DVVSet {
             result.add(event);
             return result;
         }
-        if (vector.size() > 0 && ((List) vector.get(0)).size() > 0) {
+        if (((List) vector.get(0)).size() > 0) {
             Object vectorId = ((List) vector.get(0)).get(0);
-            if (isSizeEqual(theId, vectorId) == 0) {
+            if (theId.equals(vectorId)) {
                 List values = new ArrayList();
                 if (value instanceof List) {
                     values.addAll((List) value);
@@ -339,22 +324,21 @@ public class DVVSet {
                 result.add(bit);
                 result.addAll(vector.subList(1, vector.size()));
                 return result;
-            }
-        }
-        if (vector.size() > 0 && ((List) vector.get(0)).size() > 0) {
-            Object nestedElement = ((List) vector.get(0)).get(0);
-            Object vectorId = ((List) vector.get(0)).get(0);
-            if (nestedElement instanceof List || isSizeEqual(vectorId, theId) > 0) {
-                List result = new ArrayList();
-                List bit = new ArrayList();
-                bit.add(theId);
-                bit.add(1);
-                List bitValue = new ArrayList();
-                bitValue.add(value);
-                bit.add(bitValue);
-                result.add(bit);
-                result.addAll(vector);
-                return result;
+            } else {
+                Object nestedElement = ((List) vector.get(0)).get(0);
+                DVVComparator comparator = new DVVComparator();
+                if (comparator.compare(nestedElement, theId) > 0) {
+                    List result = new ArrayList();
+                    List bit = new ArrayList();
+                    bit.add(theId);
+                    bit.add(1);
+                    List bitValue = new ArrayList();
+                    bitValue.add(value);
+                    bit.add(bitValue);
+                    result.add(bit);
+                    result.addAll(vector);
+                    return result;
+                }
             }
         }
         List result = new ArrayList();
