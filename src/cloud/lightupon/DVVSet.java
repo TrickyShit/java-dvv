@@ -26,9 +26,7 @@ public class DVVSet {
     }
 
     public Clock newList(String value) {
-        List<String> values = new ArrayList();
-        values.add(value);
-        return new Clock(new ArrayList(), values);
+        return newDvv(value);
     }
 
     /*
