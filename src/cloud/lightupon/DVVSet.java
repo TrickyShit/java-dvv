@@ -280,13 +280,14 @@ public class DVVSet {
         c1.add(clock1.getEntries());
         c1.add(new ArrayList());
         List syncedClock = _sync(c1, clock2.asList());
-        // We create a new event on the synced causal history,
-        // with the id I and the new value.
-        // The anonymous values that were synced still remain.
+
         Object clockValue = clock1.getValue();
         if (clockValue instanceof List) {
             clockValue = ((List) clockValue).get(0);
         }
+        // We create a new event on the synced causal history,
+        // with the id I and the new value.
+        // The anonymous values that were synced still remain.
         List event = event((List) syncedClock.get(0), theId, clockValue);
         return new Clock(event, (List) syncedClock.get(1));
     }
@@ -411,14 +412,16 @@ public class DVVSet {
 
     public boolean equal(List vector1, List vector2) {
         if (vector1.isEmpty() && vector2.isEmpty()) return true;
-        List value1 = (List) vector1.get(0);
-        List value2 = (List) vector2.get(0);
-        if (!value1.isEmpty() && !value2.isEmpty()) {
-            if (value1.get(0) == value2.get(0)) {
-                int size1 = ((List) value1.get(2)).size();
-                int size2 = ((List) value2.get(2)).size();
-                if (size1 == size2) {
-                    return equal(vector1.subList(1, vector1.size()), vector1.subList(1, vector1.size()));
+        if (!vector1.isEmpty() && !vector2.isEmpty()) {
+            List value1 = (List) vector1.get(0);
+            List value2 = (List) vector2.get(0);
+            if (!value1.isEmpty() && !value2.isEmpty()) {
+                if (value1.get(0) == value2.get(0) && value1.get(1) == value2.get(1)) {
+                    int size1 = ((List) value1.get(2)).size();
+                    int size2 = ((List) value2.get(2)).size();
+                    if (size1 == size2) {
+                        return equal(vector1.subList(1, vector1.size()), vector2.subList(1, vector2.size()));
+                    }
                 }
             }
         }

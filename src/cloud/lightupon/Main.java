@@ -24,6 +24,9 @@ public class Main {
         } else {
             System.out.println("OK");
         }
-    }
 
+        List context2 = dvvSet.join(dot);
+        Clock newDot2 = dvvSet.update(dvvSet.newWithHistory(context2, "1616682865530"), dot, "user_id_2");
+        dvvSet.sync(new Clock(dot.asList(), newDot2.asList()));
+    }
 }

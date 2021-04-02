@@ -446,8 +446,9 @@ public class DVVSetTest extends TestCase {
         // compare only the causal history
         assertTrue(this.dvvSet.equal(A, B));
         assertTrue(this.dvvSet.equal(B, A));
-        assertTrue(this.dvvSet.equal(A, C));
-        assertTrue(this.dvvSet.equal(B, C));
+
+        assertFalse(this.dvvSet.equal(A, C));
+        assertFalse(this.dvvSet.equal(B, C));
     }
 
     public void testSize() {
