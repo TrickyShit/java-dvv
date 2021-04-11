@@ -84,7 +84,7 @@ public class DVVSet {
         return foldl(clock.asList());
     }
 
-    private List _sync(List clock1, List clock2) {
+    public List _sync(List clock1, List clock2) {
         if (clock1.isEmpty()) {
             return clock2;
         }
@@ -248,6 +248,7 @@ public class DVVSet {
             List record = new ArrayList();
             record.add(value.get(0));
             record.add(value.get(1));
+            record.add(new ArrayList());
             result.add(record);
         }
         return result;
