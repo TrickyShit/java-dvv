@@ -9,8 +9,8 @@ import java.util.*;
 
 public class DVVSet {
     /*
-     * Constructs a new clock set without causal history,
-     * and receives one value that goes to the anonymous list.
+     * Constructs a new clock set without causal history, and receives one value
+     * that goes to the anonymous list.
      */
     public Clock newDvv(String value) {
         List<String> values = new ArrayList();
@@ -30,10 +30,9 @@ public class DVVSet {
     }
 
     /*
-     * Constructs a new clock set with the causal history
-     * of the given version vector / vector clock,
-     * and receives one value that goes to the anonymous list.
-     * The version vector SHOULD BE the output of join.
+     * Constructs a new clock set with the causal history of the given version
+     * vector / vector clock, and receives one value that goes to the anonymous
+     * list. The version vector SHOULD BE the output of join.
      */
     public Clock newWithHistory(List<List> vector, Object value) {
         // defense against non-order preserving serialization
@@ -55,7 +54,8 @@ public class DVVSet {
     }
 
     /*
-     * Same as newWithHistory, but receives a list of values, instead of a single value.
+     * Same as newWithHistory, but receives a list of values, instead of a single
+     * value.
      */
     public Clock newListWithHistory(List vector, String value) {
         List values = new ArrayList();
@@ -77,8 +77,8 @@ public class DVVSet {
     }
 
     /*
-     * Synchronizes a list of clocks using _sync().
-     * It discards (causally) outdated values, while merging all causal histories.
+     * Synchronizes a list of clocks using _sync(). It discards (causally) outdated
+     * values, while merging all causal histories.
      */
     public List sync(Clock clock) {
         return foldl(clock.asList());
@@ -128,8 +128,10 @@ public class DVVSet {
     }
 
     private List _sync2(List<List> entries1, List<List> entries2) {
-        if (entries1.isEmpty()) return entries2;
-        if (entries2.isEmpty()) return entries1;
+        if (entries1.isEmpty())
+            return entries2;
+        if (entries2.isEmpty())
+            return entries1;
 
         // copy lists to avoid changing them
         List head1 = new ArrayList();
@@ -198,9 +200,9 @@ public class DVVSet {
         return result;
     }
 
-    /* Returns True if the first clock is causally older than
-     * the second clock, thus values on the first clock are outdated.
-     * Returns False otherwise.
+    /*
+     * Returns True if the first clock is causally older than the second clock, thus
+     * values on the first clock are outdated. Returns False otherwise.
      */
     public boolean less(List clock1, List clock2) {
         return greater((List) clock2.get(0), (List) clock1.get(0), false);
@@ -210,8 +212,10 @@ public class DVVSet {
         if (vector1.isEmpty() && vector2.isEmpty()) {
             return isStrict;
         }
-        if (vector2.isEmpty()) return true;
-        if (vector1.isEmpty()) return false;
+        if (vector2.isEmpty())
+            return true;
+        if (vector1.isEmpty())
+            return false;
         Object value1 = ((List) vector1.get(0)).get(0);
         Object value2 = ((List) vector2.get(0)).get(0);
         if (value1.equals(value2)) {
@@ -223,7 +227,8 @@ public class DVVSet {
             if (dotNum1 > dotNum2) {
                 return greater(vector1.subList(1, vector1.size()), vector2.subList(1, vector2.size()), isStrict);
             }
-            if (dotNum1 < dotNum2) return false;
+            if (dotNum1 < dotNum2)
+                return false;
         }
         DVVComparator comparator = new DVVComparator();
         if (comparator.compare(((List) vector2.get(0)).get(0), ((List) vector1.get(0)).get(0)) > 0) {
@@ -248,9 +253,10 @@ public class DVVSet {
         return result;
     }
 
-    /* Advances the causal history with the given id.
-     * The new value is the *anonymous dot* of the clock.
-     * The client clock SHOULD BE a direct result of new.
+    /*
+     * Advances the causal history with the given id. The new value is the
+     * *anonymous dot* of the clock. The client clock SHOULD BE a direct result of
+     * new.
      */
     public Clock create(Clock clock, Object theId) {
         Object value = clock.getValue();
@@ -264,15 +270,13 @@ public class DVVSet {
         return new Clock(event, new ArrayList());
     }
 
-    /* Advances the causal history of the
-     * first clock with the given id, while synchronizing
-     * with the second clock, thus the new clock is
-     * causally newer than both clocks in the argument.
-     * The new value is the *anonymous dot* of the clock.
-     * The first clock SHOULD BE a direct result of new/2,
-     * which is intended to be the client clock with
-     * the new value in the *anonymous dot* while
-     * the second clock is from the local server.
+    /*
+     * Advances the causal history of the first clock with the given id, while
+     * synchronizing with the second clock, thus the new clock is causally newer
+     * than both clocks in the argument. The new value is the *anonymous dot* of the
+     * clock. The first clock SHOULD BE a direct result of new/2, which is intended
+     * to be the client clock with the new value in the *anonymous dot* while the
+     * second clock is from the local server.
      */
     public Clock update(Clock clock1, Clock clock2, Object theId) {
         // Sync both clocks without the new value
@@ -360,14 +364,15 @@ public class DVVSet {
         if (value instanceof List) {
             result += ((List) value).size();
         } else {
-            if (value != null) result += 1;
+            if (value != null)
+                result += 1;
         }
         return result;
     }
 
     /*
      * Returns all the ids used in this clock set.
-     * */
+     */
     public List ids(List clock) {
         List result = new ArrayList<>();
         List entries = (List) clock.get(0);
@@ -379,8 +384,8 @@ public class DVVSet {
     }
 
     /*
-     * Returns all the values used in this clock set,
-     * including the anonymous values.
+     * Returns all the values used in this clock set, including the anonymous
+     * values.
      */
     public List values(List clock) {
         List lst = new ArrayList();
@@ -403,15 +408,16 @@ public class DVVSet {
     }
 
     /*
-     * Compares the equality of both clocks, regarding
-     * only the causal histories, thus ignoring the values.
+     * Compares the equality of both clocks, regarding only the causal histories,
+     * thus ignoring the values.
      */
     public boolean equal(Clock clock1, Clock clock2) {
         return equal(clock1.getEntries(), clock2.getEntries());
     }
 
     public boolean equal(List vector1, List vector2) {
-        if (vector1.isEmpty() && vector2.isEmpty()) return true;
+        if (vector1.isEmpty() && vector2.isEmpty())
+            return true;
         if (!vector1.isEmpty() && !vector2.isEmpty()) {
             List value1 = (List) vector1.get(0);
             List value2 = (List) vector2.get(0);
@@ -426,5 +432,44 @@ public class DVVSet {
             }
         }
         return false;
+    }
+
+    public String ClockToString(Clock clock) {
+        String result = "";
+        List clockEntries = clock.getEntries();
+        if (clockEntries.size() > 0) {
+            int count = 0;
+            for (int i = 0; i < clockEntries.size(); i++) {
+                List entry = (List) clockEntries.get(i);
+                result = result + "[{" + entry.get(0) + "," + entry.get(1) + ",";
+                List values = (List) entry.get(2);
+                if (values.size() == 0)
+                    result = result + "[]";
+                else {
+                    for (int j = 0; j < values.size(); j++) {
+                        result = result + "[" + values.get(j) + "]";
+                    }
+                }
+                result = result + "}],";
+            }
+        } else {
+            result = result + "[],";
+        }
+        List clockValues= new ArrayList();
+        if (clock.getValue() instanceof List) {
+            clockValues = (List) clock.getValue();
+        } else {
+            clockValues.add((String) clock.getValue());
+        }
+        if (clockValues.size() > 0) {
+            for (int j = 0; j < clockValues.size(); j++) {
+                result = result + "[" + clockValues.get(j) + "]";
+            }
+            result = result + ";";
+        }
+        else {
+            result = result + "[];";
+        }
+        return result;
     }
 }
